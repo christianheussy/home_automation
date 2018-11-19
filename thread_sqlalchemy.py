@@ -5,13 +5,15 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String
 
+import threading
+import time
+
 Base = declarative_base()
-engine = create_engine('sqlite:///:memory:')
+engine = create_engine('sqlite:///school.db')
 
 session_factory = sessionmaker(bind=engine)
 Session = scoped_session(session_factory)
 
-session = Session()
 
 class Person(Base):
     __tablename__ = 'person'
@@ -21,7 +23,28 @@ class Person(Base):
     name = Column(String(250), nullable=False)
 
 
-Bob = Person(name='Bob')
+def writing_thread():
+    name_list = ['Christian', 'Mark', 'Bob', 'Will']
 
-session.add(Bob)
-session.commit()
+    for name in name_list:
+        session = Session()
+        person = Person(name=name)
+        session.add(person)
+        session.commit()
+        time.sleep(1)
+
+
+def reading_thread():
+    for i in range(10):
+        session = Session()
+        e = session.query(Person).order_by(Person.id)[-1]
+        print(e)
+        time.sleep(1)
+    Session.remove()
+
+
+t1 = threading.Thread(target=writing_thread)
+t2 = threading.Thread(target=reading_thread)
+
+t1.start()
+t2.start()
